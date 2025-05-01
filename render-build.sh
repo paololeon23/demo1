@@ -14,4 +14,8 @@ sudo apt-get install -y --no-install-recommends \
 echo "➡️ Instalando Tesseract OCR..."
 sudo apt-get install -y tesseract-ocr
 
+# Verificar que Tesseract está instalado correctamente
+echo "➡️ Verificando instalación de Tesseract..."
+tesseract --version
+
 echo "✅ Todas las dependencias del sistema fueron instaladas correctamente."
