@@ -11,4 +11,7 @@ sudo apt-get install -y --no-install-recommends \
     python3-dev \
     gcc
 
-echo "✅ Dependencias instaladas correctamente"
+echo "➡️ Instalando Tesseract OCR..."
+sudo apt-get install -y tesseract-ocr
+
+echo "✅ Todas las dependencias del sistema fueron instaladas correctamente."
