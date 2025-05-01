@@ -7,8 +7,10 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 
-# Configuración de Tesseract (ajusta según tu sistema)
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Ruta relativa al ejecutable de Tesseract
+tesseract_path = os.path.join(os.path.dirname(__file__), 'Tesseract-OCR', 'tesseract.exe')
+
+pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 app = Flask(__name__)
 
