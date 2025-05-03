@@ -12,7 +12,6 @@ from werkzeug.utils import secure_filename
 # Ruta a tesseract en Linux
 pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
 
-
 app = Flask(__name__)
 
 # Configuración para archivos subidos
