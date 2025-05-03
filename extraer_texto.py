@@ -6,12 +6,17 @@ from flask import Flask, request, send_file, jsonify
 import os
 import uuid
 from werkzeug.utils import secure_filename
-
+import platform
 # Ruta relativa al ejecutable de Tesseract
 # tesseract_path = os.path.join(os.path.dirname(__file__), 'Tesseract-OCR', 'tesseract.exe')
 # Ruta a tesseract en Linux
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+# pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
 
+pytesseract.pytesseract.tesseract_cmd = (
+    r'C:\Program Files\Tesseract-OCR\tesseract.exe' 
+    if platform.system() == 'Windows' 
+    else '/usr/bin/tesseract'
+)
 
 app = Flask(__name__)
 
