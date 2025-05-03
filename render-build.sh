@@ -1,21 +1,18 @@
 #!/bin/bash
 # Script para instalar dependencias del sistema en Render
+
 set -e  # Detiene el script si hay errores
 
-echo "➡️ Actualizando paquetes del sistema..."
-sudo apt-get update -qq
-
 echo "➡️ Instalando dependencias para PyMuPDF..."
-sudo apt-get install -y --no-install-recommends \
-    libmupdf-dev \
-    python3-dev \
-    gcc
+pip install --no-cache-dir PyMuPDF
 
 echo "➡️ Instalando Tesseract OCR..."
-sudo apt-get install -y tesseract-ocr
+# Instalar tesseract utilizando una versión precompilada o si es necesario, usar una instalación desde pip
+pip install pytesseract
 
 # Verificar que Tesseract está instalado correctamente
 echo "➡️ Verificando instalación de Tesseract..."
-tesseract --version
+python -c "import pytesseract; print(pytesseract.get_tesseract_version())"
 
-echo "✅ Todas las dependencias del sistema fueron instaladas correctamente."
+echo "✅ Todas las dependencias de Python fueron instaladas correctamente."
+
