@@ -11,7 +11,7 @@ from werkzeug.utils import secure_filename
 # tesseract_path = os.path.join(os.path.dirname(__file__), 'Tesseract-OCR', 'tesseract.exe')
 # Ruta a tesseract en Linux
 # Asegúrate de usar la ruta correcta de tesseract
-pytesseract.pytesseract.tesseract_cmd = '/usr/local/bin/tesseract'  # O la ruta correcta
+pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
 
 
 app = Flask(__name__)
