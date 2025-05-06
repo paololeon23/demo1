@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python", "tesseract-ocr"]
+
+[phases.build]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "gunicorn extraer_texto:app"  # Reemplaza con el comando para iniciar tu app
