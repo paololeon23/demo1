@@ -1,10 +1,7 @@
 services:
   - type: web
-    name: extraer-texto-api
+    name: demo1
     env: python
-    buildCommand: "./render-build.sh && pip install -r requirements.txt"
-    startCommand: "gunicorn extraer_texto:app"
+    buildCommand: ./render-build.sh && pip install -r requirements.txt
+    startCommand: python extraer_texto.py
     plan: free
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10
