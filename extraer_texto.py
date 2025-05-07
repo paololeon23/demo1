@@ -7,12 +7,9 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 
-# Ruta relativa al ejecutable de Tesseract
-# tesseract_path = os.path.join(os.path.dirname(__file__), 'Tesseract-OCR', 'tesseract.exe')
-# Ruta a tesseract en Linux
-# Configuración de Tesseract
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
-os.environ['TESSDATA_PREFIX'] = os.path.join(os.getcwd(), 'tessdata')  # opcional
+
+# Asegúrate de usar la ruta correcta de tesseract
+pytesseract.pytesseract.tesseract_cmd = 'tesseract'
 
 app = Flask(__name__)
 
@@ -50,14 +47,34 @@ def convertir_pdf_escaneado_a_ocr(pdf_path):
             config = r'--oem 3 --psm 6 -l spa+eng --dpi 300'
             data = pytesseract.image_to_data(img, config=config, output_type=pytesseract.Output.DICT)
 
-            # Insertar texto invisible en la página
+            # Insertar texto OCR invisible en la página (solo para búsqueda)
             for i in range(len(data['text'])):
-                if int(data['conf'][i]) > 60:  # Sólo texto con confianza > 60%
-                    texto = data['text'][i].strip()
-                    if texto:
-                        x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
-                        rect = fitz.Rect(x, y, x + w, y + h)
-                        nueva_pagina.insert_text(rect.tl, texto, fontsize=h, color=(0, 0, 0), render_mode=3)
+                try:
+                    # Convertir confianza a entero
+                    confianza = int(float(data['conf'][i]))
+                    if confianza > 60:  # Solo texto con una alta confianza
+                        texto = data['text'][i].strip()
+                        if texto:
+                            # Convertir coordenadas a float primero, luego redondear si es necesario
+                            x = float(data['left'][i])
+                            y = float(data['top'][i])
+                            w = float(data['width'][i])
+                            h = float(data['height'][i])
+                            
+                            # Crear rectángulo con las coordenadas
+                            rect = fitz.Rect(x, y, x + w, y + h)
+                            
+                            # Insertar texto en la capa OCR
+                            nueva_pagina.insert_text(
+                                rect.tl, 
+                                texto, 
+                                fontsize=round(h),  # Redondear el tamaño de fuente
+                                color=(0, 0, 0), 
+                                render_mode=3
+                            )
+                except (ValueError, TypeError) as e:
+                    print(f"Advertencia: Error procesando bloque de texto {i}: {str(e)}")
+                    continue
 
         # Guardar nuevo PDF OCR en un buffer de memoria
         pdf_bytes = doc_ocr.write()
@@ -67,6 +84,11 @@ def convertir_pdf_escaneado_a_ocr(pdf_path):
         return True, pdf_bytes
     except Exception as e:
         return False, f"Error al procesar PDF: {str(e)}"
+
+# Ruta raíz para comprobar si el servidor Flask está funcionando
+@app.route('/')
+def home():
+    return "¡Servidor Flask en Docker funcionando correctamente!"
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():

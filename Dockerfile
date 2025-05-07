@@ -1,22 +1,19 @@
-# Usamos una imagen base de Python
-FROM python:3.8-slim
+FROM python:3.10-slim
 
-# Instalamos las dependencias necesarias, incluyendo Tesseract
-RUN apt-get update && \
-    apt-get install -y tesseract-ocr && \
-    apt-get install -y libpq-dev
+# Instala Tesseract (versión Linux)
+RUN apt-get update && apt-get install -y tesseract-ocr
 
-# Copiamos el archivo requirements.txt (si lo tienes) al contenedor
-COPY requirements.txt .
-
-# Instalamos las dependencias de Python
-RUN pip install -r requirements.txt
-
-# Copiamos todo el código fuente al contenedor
-COPY . /app
-
-# Establecemos el directorio de trabajo dentro del contenedor
+# Crea carpeta app
 WORKDIR /app
 
-# Comando para ejecutar la aplicación (ajustalo si el nombre de tu archivo es otro)
+# Copia todo el contenido del proyecto
+COPY . .
+
+# Instala librerías Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expone puerto si usas Flask o FastAPI
+EXPOSE 5000
+
+# Comando para ejecutar tu app
 CMD ["python", "extraer_texto.py"]
