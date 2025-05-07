@@ -1,19 +1,31 @@
 FROM python:3.10-slim
 
-# Instala Tesseract (versión Linux)
-RUN apt-get update && apt-get install -y tesseract-ocr
+# Instalar Tesseract con idiomas y dependencias necesarias
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    tesseract-ocr-eng \
+    libtesseract-dev \
+    libleptonica-dev \
+    poppler-utils \
+    libglib2.0-0 \
+    libsm6 \
+    libxrender1 \
+    libxext6 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Crea carpeta app
+# Crear carpeta de trabajo
 WORKDIR /app
 
-# Copia todo el contenido del proyecto
+# Copiar archivos del proyecto
 COPY . .
 
-# Instala librerías Python
+# Instalar dependencias Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expone puerto si usas Flask o FastAPI
+# Exponer el puerto (Flask)
 EXPOSE 5000
 
-# Comando para ejecutar tu app
+# Comando de ejecución
 CMD ["python", "extraer_texto.py"]
