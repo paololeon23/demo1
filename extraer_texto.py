@@ -8,8 +8,28 @@ import uuid
 from werkzeug.utils import secure_filename
 
 
-# Asegúrate de usar la ruta correcta de tesseract
-pytesseract.pytesseract.tesseract_cmd = 'tesseract'
+# Configuración robusta para Tesseract
+pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+
+# Posibles rutas donde pueden estar los archivos de idiomas (prueba una por una)
+# Rutas alternativas para tessdata
+tessdata_dirs = [
+    '/usr/share/tesseract-ocr/tessdata',
+    '/usr/share/tessdata',
+    '/usr/share/tesseract-ocr/4.00/tessdata'
+]
+
+for dir_path in tessdata_dirs:
+    if os.path.exists(dir_path):
+        os.environ['TESSDATA_PREFIX'] = dir_path
+        print(f"Usando tessdata en: {dir_path}")
+        break
+else:
+    raise RuntimeError("""
+    No se encontraron archivos de idiomas para Tesseract.
+    Verifica que los paquetes 'tesseract-ocr-spa' y 'tesseract-ocr-eng'
+    estén instalados en el Dockerfile.
+    """)
 
 app = Flask(__name__)
 
