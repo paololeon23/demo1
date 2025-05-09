@@ -112,6 +112,9 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
+
+    print('---------------- archivo ------------')
+    print(request.files)  # Esto imprimirá todo lo que se recibe en request.files
     # Verificar si se envió un archivo
     if 'prueba' not in request.files:
         return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
