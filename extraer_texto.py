@@ -132,29 +132,30 @@ def upload_file():
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
     
     try:
-        # Guardar archivo subido temporalmente
         file.save(upload_path)
-        
-        # Procesar el PDF y obtener los bytes del resultado
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
         
         if not success:
             return jsonify({'error': result}), 500
         
-        # Crear un objeto BytesIO con los datos del PDF
-        pdf_io = io.BytesIO(result)
+        # Convertir a formato Buffer simplificado
+        hex_start = ' '.join(f"{byte:02x}" for byte in result[:20])  # Primeros 20 bytes
+        total_bytes = len(result)
+        buffer_repr = f"<Buffer {hex_start} ... {total_bytes - 20} more bytes>"
         
-        # Enviar el archivo procesado directamente desde memoria
-        return send_file(
-            pdf_io,
-            as_attachment=True,
-            download_name=f"ocr_{original_filename}",
-            mimetype='application/pdf'
-        )
+        # Crear un objeto BytesIO para enviar el PDF
+        pdf_io = io.BytesIO(result)
+        pdf_io.seek(0)
+        
+        return jsonify({
+            'success': True,
+            'buffer': buffer_repr,
+            'size_bytes': total_bytes,
+        })
+        
     except Exception as e:
         return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
     finally:
-        # Limpiar archivo temporal
         if os.path.exists(upload_path):
             os.remove(upload_path)
 
