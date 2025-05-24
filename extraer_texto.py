@@ -110,19 +110,19 @@ def upload_file():
     
     try:
         file.save(upload_path)
-        success, result = convertir_pdf_escaneado_a_ocr(upload_path)
+        success, pdf_bytes = convertir_pdf_escaneado_a_ocr(upload_path)
         
         if not success:
-            return jsonify({'error': result}), 500
+            return jsonify({'error': pdf_bytes}), 500
         
-        # --- BUFFER REAL EN TU FORMATO ESPECÍFICO ---
-        hex_data = ' '.join(f"{byte:02x}" for byte in result)  # Todos los bytes en hex
-        buffer_repr = f"<Buffer {hex_data}>"  # Sin recortar (¡contiene TODO el PDF!)
+        # --- BUFFER REAL EN FORMATO HEX (COMO TU EJEMPLO) ---
+        hex_buffer = pdf_bytes.hex()  # Todos los bytes del PDF en hexadecimal
+        buffer_repr = f"<Buffer {hex_buffer}>"  # Formato idéntico al tuyo
         
         return jsonify({
             'success': True,
-            'buffer': buffer_repr,  # Ejemplo: "<Buffer 25 50 44 46 2d...>"
-            'size_bytes': len(result),
+            'buffer': buffer_repr,  # Ej: "<Buffer 255044462d312e340a25c7ec8f2a...>"
+            'size_bytes': len(pdf_bytes),
             'filename': original_filename
         })
         
