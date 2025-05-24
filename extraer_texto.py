@@ -90,54 +90,41 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
-    # Verificar si se envió el campo 'prueba' y tiene un archivo
+    # Validar que el campo 'prueba' existe y tiene un archivo
     if 'prueba' not in request.files:
-        return jsonify({'error': 'No se encontró el campo "prueba" en la solicitud'}), 400
+        return jsonify({'error': 'Campo "prueba" no encontrado'}), 400
 
     file = request.files['prueba']
-
-    # Validar que se haya seleccionado un archivo
     if file.filename == '':
-        return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
+        return jsonify({'error': 'Archivo no seleccionado'}), 400
 
-    # Validar extensión del archivo
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
+        return jsonify({'error': 'Solo se permiten archivos PDF'}), 400
 
-    # Generar un nombre seguro para el archivo temporal
+    # Procesar el archivo
     unique_id = str(uuid.uuid4())
-    original_filename = secure_filename(file.filename)
-    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
+    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{secure_filename(file.filename)}")
 
     try:
-        # Guardar el archivo temporalmente (para procesarlo con PyMuPDF)
         file.save(upload_path)
-
-        # Procesar el PDF con OCR
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
 
         if not success:
             return jsonify({'error': result}), 500
 
-        # Convertir el PDF a buffer hexadecimal (sin truncar)
+        # Convertir TODOS los bytes a hexadecimal (sin truncar)
         hex_full = ' '.join(f"{byte:02x}" for byte in result)
-        total_bytes = len(result)
-
-        # Crear la representación del buffer (ejemplo: "<Buffer 25 50 44 ...>")
         buffer_repr = f"<Buffer {hex_full}>"
 
         return jsonify({
             'success': True,
-            'buffer': buffer_repr,  # Buffer completo en hexadecimal
-            'size_bytes': total_bytes,
-            'original_filename': original_filename,  # Opcional: nombre original
+            'buffer': buffer_repr,  # Ejemplo: "<Buffer 25 50 44 ...>"
+            'size_bytes': len(result)  # Tamaño en bytes
         })
 
     except Exception as e:
-        return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
-
+        return jsonify({'error': str(e)}), 500
     finally:
-        # Eliminar el archivo temporal si existe
         if os.path.exists(upload_path):
             os.remove(upload_path)
             
