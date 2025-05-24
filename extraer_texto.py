@@ -6,7 +6,7 @@ from flask import Flask, request, send_file, jsonify
 import os
 import uuid
 from werkzeug.utils import secure_filename
-import base64
+
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 app = Flask(__name__)
@@ -90,44 +90,48 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
-    print('---------------- archivo ------------')
-    print(request.files)
 
+    print('---------------- archivo ------------')
+    print(request.files)  # Esto imprimirá todo lo que se recibe en request.files
+    # Verificar si se envió un archivo
     if 'prueba' not in request.files:
         return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
     
     file = request.files['prueba']
     
+    # Verificar si se seleccionó un archivo
     if file.filename == '':
         return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
     
+    # Verificar extensión permitida
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Solo se aceptan archivos PDF'}), 400
-
+        return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
+    
+    # Generar nombre único para el archivo temporal
     unique_id = str(uuid.uuid4())
     original_filename = secure_filename(file.filename)
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
     
     try:
         file.save(upload_path)
-        success, pdf_bytes = convertir_pdf_escaneado_a_ocr(upload_path)
+        success, result = convertir_pdf_escaneado_a_ocr(upload_path)
         
         if not success:
-            return jsonify({'error': pdf_bytes}), 500
+            return jsonify({'error': result}), 500
         
-        # --- BUFFER 100% REAL Y FUNCIONAL ---
-        # 1. Convertir TODOS los bytes a hexadecimal (sin espacios)
-        hex_completo = pdf_bytes.hex()  # "255044462d312e34..." (sin truncar)
+        # Convertir a formato Buffer simplificado
+        hex_start = ' '.join(f"{byte:02x}" for byte in result[:20])  # Primeros 20 bytes
+        total_bytes = len(result)
+        buffer_repr = f"<Buffer {hex_start} ... {total_bytes - 20} more bytes>"
         
-        # 2. Formato final (igual a tu estructura pero con datos reales)
-        buffer_repr = f"<Buffer {hex_completo}>"
+        # Crear un objeto BytesIO para enviar el PDF
+        pdf_io = io.BytesIO(result)
+        pdf_io.seek(0)
         
         return jsonify({
             'success': True,
-            'buffer': buffer_repr,  # Ejemplo: "<Buffer 255044462d...>"
-            'size_bytes': len(pdf_bytes),
-            'filename': original_filename,
-            'is_valid_pdf': pdf_bytes.startswith(b'%PDF-')  # Verificación adicional
+            'buffer': buffer_repr,
+            'size_bytes': total_bytes,
         })
         
     except Exception as e:
