@@ -115,15 +115,14 @@ def upload_file():
         if not success:
             return jsonify({'error': result}), 500
         
-        # --- FORMATO EXACTO QUE SOLICITAS ---
-        hex_start = ' '.join([f"{byte:02x}" for byte in result[:50]])  # Primeros 50 bytes en hex
-        total_bytes = len(result)
-        buffer_repr = f"<Buffer {hex_start} ... {total_bytes - 50} more bytes>"
+        # --- BUFFER REAL EN TU FORMATO ESPECÍFICO ---
+        hex_data = ' '.join(f"{byte:02x}" for byte in result)  # Todos los bytes en hex
+        buffer_repr = f"<Buffer {hex_data}>"  # Sin recortar (¡contiene TODO el PDF!)
         
         return jsonify({
             'success': True,
-            'buffer': buffer_repr,  # Estructura idéntica a tu ejemplo
-            'size_bytes': total_bytes,
+            'buffer': buffer_repr,  # Ejemplo: "<Buffer 25 50 44 46 2d...>"
+            'size_bytes': len(result),
             'filename': original_filename
         })
         
