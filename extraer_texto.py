@@ -115,13 +115,14 @@ def upload_file():
         if not success:
             return jsonify({'error': result}), 500
         
-        # --- ÚNICO CAMBIO REAL ---
-        pdf_base64 = base64.b64encode(result).decode('utf-8')  # Buffer real en base64
+        # --- BUFFER REAL EN HEXADECIMAL ---
+        hex_buffer = result.hex()  # Convierte todos los bytes a hexadecimal
         
         return jsonify({
             'success': True,
-            'buffer': pdf_base64,  # Ahora es el PDF real codificado
+            'buffer': hex_buffer,  # Buffer real en hex (ej: "255044462d...")
             'size_bytes': len(result),
+            'filename': original_filename
         })
         
     except Exception as e:
