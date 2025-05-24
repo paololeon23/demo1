@@ -115,13 +115,15 @@ def upload_file():
         if not success:
             return jsonify({'error': result}), 500
         
-        # --- BUFFER REAL EN HEXADECIMAL ---
-        hex_buffer = result.hex()  # Convierte todos los bytes a hexadecimal
+        # --- FORMATO EXACTO QUE SOLICITAS ---
+        hex_start = ' '.join([f"{byte:02x}" for byte in result[:50]])  # Primeros 50 bytes en hex
+        total_bytes = len(result)
+        buffer_repr = f"<Buffer {hex_start} ... {total_bytes - 50} more bytes>"
         
         return jsonify({
             'success': True,
-            'buffer': hex_buffer,  # Buffer real en hex (ej: "255044462d...")
-            'size_bytes': len(result),
+            'buffer': buffer_repr,  # Estructura idéntica a tu ejemplo
+            'size_bytes': total_bytes,
             'filename': original_filename
         })
         
