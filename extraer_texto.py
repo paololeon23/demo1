@@ -6,30 +6,8 @@ from flask import Flask, request, send_file, jsonify
 import os
 import uuid
 from werkzeug.utils import secure_filename
-import base64
 
-# Configuración robusta para Tesseract
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
-
-# Posibles rutas donde pueden estar los archivos de idiomas (prueba una por una)
-# Rutas alternativas para tessdata
-tessdata_dirs = [
-    '/usr/share/tesseract-ocr/tessdata',
-    '/usr/share/tessdata',
-    '/usr/share/tesseract-ocr/4.00/tessdata'
-]
-
-for dir_path in tessdata_dirs:
-    if os.path.exists(dir_path):
-        os.environ['TESSDATA_PREFIX'] = dir_path
-        print(f"Usando tessdata en: {dir_path}")
-        break
-else:
-    raise RuntimeError("""
-    No se encontraron archivos de idiomas para Tesseract.
-    Verifica que los paquetes 'tesseract-ocr-spa' y 'tesseract-ocr-eng'
-    estén instalados en el Dockerfile.
-    """)
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 app = Flask(__name__)
 
@@ -141,15 +119,19 @@ def upload_file():
         if not success:
             return jsonify({'error': result}), 500
         
-        import base64
-        buffer_base64 = base64.b64encode(result).decode('utf-8')
+        # Convertir a formato Buffer simplificado
+        hex_start = ' '.join(f"{byte:02x}" for byte in result[:20])  # Primeros 20 bytes
         total_bytes = len(result)
-
+        buffer_repr = f"<Buffer {hex_start} ... {total_bytes - 20} more bytes>"
+        
+        # Crear un objeto BytesIO para enviar el PDF
+        pdf_io = io.BytesIO(result)
+        pdf_io.seek(0)
+        
         return jsonify({
             'success': True,
-            'buffer_base64': buffer_base64,
+            'buffer': buffer_repr,
             'size_bytes': total_bytes,
-            'message': 'Este buffer base64 representa un PDF válido que puedes reconstruir en el cliente.'
         })
         
     except Exception as e:
@@ -157,5 +139,6 @@ def upload_file():
     finally:
         if os.path.exists(upload_path):
             os.remove(upload_path)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
