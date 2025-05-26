@@ -90,54 +90,46 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
-    print('---------------- archivo ------------')
-    print(request.files)  # Mostrar lo recibido en request.files
 
-    # Verificar si se envió el archivo con nombre 'prueba'
+    print('---------------- archivo ------------')
+    print(request.files)  # Esto imprimirá todo lo que se recibe en request.files
+    # Verificar si se envió un archivo
     if 'prueba' not in request.files:
         return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
     
     file = request.files['prueba']
-
+    
     # Verificar si se seleccionó un archivo
     if file.filename == '':
         return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
-
-    # Validar extensión permitida
+    
+    # Verificar extensión permitida
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Tipo de archivo no permitido. Solo PDFs'}), 400
-
-    # Crear nombre único para archivo temporal
+        return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
+    
+    # Generar nombre único para el archivo temporal
     unique_id = str(uuid.uuid4())
     original_filename = secure_filename(file.filename)
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
-
+    
     try:
-        # Guardar archivo temporalmente
         file.save(upload_path)
-
-        # Convertir PDF escaneado a PDF OCR
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
-
+        
         if not success:
             return jsonify({'error': result}), 500
-
-        # Enviar el PDF OCR resultante en memoria como archivo
-        pdf_io = io.BytesIO(result)
-        pdf_io.seek(0)
-
+        
+        # Enviar el PDF OCR directamente como archivo (binario)
         return send_file(
-            pdf_io,
+            io.BytesIO(result),
             mimetype='application/pdf',
             as_attachment=True,
             download_name='ocr_result.pdf'
         )
-
+        
     except Exception as e:
         return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
-
     finally:
-        # Eliminar archivo temporal
         if os.path.exists(upload_path):
             os.remove(upload_path)
 
