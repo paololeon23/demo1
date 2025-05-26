@@ -90,43 +90,57 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
-    # Validar que el campo 'prueba' existe y tiene un archivo
+    print('---------------- archivo ------------')
+    print(request.files)  # Mostrar lo recibido en request.files
+
+    # Verificar si se envió el archivo con nombre 'prueba'
     if 'prueba' not in request.files:
-        return jsonify({'error': 'Campo "prueba" no encontrado'}), 400
-
+        return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
+    
     file = request.files['prueba']
+
+    # Verificar si se seleccionó un archivo
     if file.filename == '':
-        return jsonify({'error': 'Archivo no seleccionado'}), 400
+        return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
 
+    # Validar extensión permitida
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Solo se permiten archivos PDF'}), 400
+        return jsonify({'error': 'Tipo de archivo no permitido. Solo PDFs'}), 400
 
-    # Procesar el archivo
+    # Crear nombre único para archivo temporal
     unique_id = str(uuid.uuid4())
-    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{secure_filename(file.filename)}")
+    original_filename = secure_filename(file.filename)
+    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
 
     try:
+        # Guardar archivo temporalmente
         file.save(upload_path)
+
+        # Convertir PDF escaneado a PDF OCR
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
 
         if not success:
             return jsonify({'error': result}), 500
 
-        # Convertir TODOS los bytes a hexadecimal (sin truncar)
-        hex_full = ' '.join(f"{byte:02x}" for byte in result)
-        buffer_repr = f"<Buffer {hex_full}>"
+        # Enviar el PDF OCR resultante en memoria como archivo
+        pdf_io = io.BytesIO(result)
+        pdf_io.seek(0)
 
-        return jsonify({
-            'success': True,
-            'buffer': buffer_repr,  # Ejemplo: "<Buffer 25 50 44 ...>"
-            'size_bytes': len(result)  # Tamaño en bytes
-        })
+        return send_file(
+            pdf_io,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='ocr_result.pdf'
+        )
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
+
     finally:
+        # Eliminar archivo temporal
         if os.path.exists(upload_path):
             os.remove(upload_path)
-            
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
