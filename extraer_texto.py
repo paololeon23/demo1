@@ -6,6 +6,7 @@ from flask import Flask, request, send_file, jsonify
 import os
 import uuid
 from werkzeug.utils import secure_filename
+import base64
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -35,11 +36,12 @@ def convertir_pdf_escaneado_a_ocr(pdf_path):
 
         for pagina in doc_original:
             pix = pagina.get_pixmap(dpi=300)  # Exportar imagen de la página a alta resolución
-            img = Image.open(io.BytesIO(pix.tobytes("png")))
+            img_bytes = pix.tobytes("png")
+            img = Image.open(io.BytesIO(img_bytes))
 
             # Crear nueva página con el mismo tamaño
             nueva_pagina = doc_ocr.new_page(width=pix.width, height=pix.height)
-            nueva_pagina.insert_image(fitz.Rect(0, 0, pix.width, pix.height), stream=pix.tobytes("png"))
+            nueva_pagina.insert_image(fitz.Rect(0, 0, pix.width, pix.height), stream=img_bytes)
 
             # Obtener datos OCR con posición
             config = r'--oem 3 --psm 6 -l spa+eng --dpi 300'
@@ -58,15 +60,18 @@ def convertir_pdf_escaneado_a_ocr(pdf_path):
                             y = float(data['top'][i])
                             w = float(data['width'][i])
                             h = float(data['height'][i])
-                            
+
                             # Crear rectángulo con las coordenadas
                             rect = fitz.Rect(x, y, x + w, y + h)
-                            
+
+                            # Tamaño de fuente mínimo 8
+                            fontsize = max(round(h), 8)
+
                             # Insertar texto en la capa OCR
                             nueva_pagina.insert_text(
                                 rect.tl, 
                                 texto, 
-                                fontsize=round(h),  # Redondear el tamaño de fuente
+                                fontsize=fontsize,  # Redondear el tamaño de fuente
                                 color=(0, 0, 0), 
                                 render_mode=3
                             )
@@ -78,7 +83,7 @@ def convertir_pdf_escaneado_a_ocr(pdf_path):
         pdf_bytes = doc_ocr.write()
         doc_original.close()
         doc_ocr.close()
-        
+
         return True, pdf_bytes
     except Exception as e:
         return False, f"Error al procesar PDF: {str(e)}"
@@ -88,51 +93,45 @@ def convertir_pdf_escaneado_a_ocr(pdf_path):
 def home():
     return "¡Servidor Flask en Docker funcionando correctamente!"
 
+
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
-
-    print('---------------- archivo ------------')
-    print(request.files)  # Esto imprimirá todo lo que se recibe en request.files
-    # Verificar si se envió un archivo
     if 'prueba' not in request.files:
         return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
-    
+
     file = request.files['prueba']
-    
-    # Verificar si se seleccionó un archivo
+
     if file.filename == '':
         return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
-    
-    # Verificar extensión permitida
+
     if not allowed_file(file.filename):
         return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
-    
-    # Generar nombre único para el archivo temporal
+
     unique_id = str(uuid.uuid4())
     original_filename = secure_filename(file.filename)
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
-    
+
     try:
         file.save(upload_path)
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
-        
+
         if not success:
             return jsonify({'error': result}), 500
-        
-        # Enviar el PDF OCR directamente como archivo (binario)
-        return send_file(
-            io.BytesIO(result),
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name='ocr_result.pdf'
-        )
-        
+
+        # Codificar el resultado en base64 para enviarlo seguro
+        pdf_base64 = base64.b64encode(result).decode('utf-8')
+
+        return jsonify({
+            'success': True,
+            'pdf_base64': pdf_base64,
+            'size_bytes': len(result)
+        })
+
     except Exception as e:
         return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
     finally:
         if os.path.exists(upload_path):
             os.remove(upload_path)
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
