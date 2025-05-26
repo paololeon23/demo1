@@ -90,43 +90,48 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
+    # 1. Validar recepción del archivo
     if 'prueba' not in request.files:
-        return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
-    
+        return jsonify({'error': 'No se envió el archivo'}), 400
+
     file = request.files['prueba']
-    
     if file.filename == '':
-        return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
-    
-    if not allowed_file(file.filename):
-        return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
-    
+        return jsonify({'error': 'Nombre de archivo vacío'}), 400
+
+    # 2. Guardar archivo temporal
     unique_id = str(uuid.uuid4())
-    original_filename = secure_filename(file.filename)
-    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
-    
+    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{secure_filename(file.filename)}")
+    file.save(upload_path)
+
     try:
-        file.save(upload_path)
-        success, result = convertir_pdf_escaneado_a_ocr(upload_path)
+        # 3. Procesar PDF y verificar buffer
+        success, pdf_bytes = convertir_pdf_escaneado_a_ocr(upload_path)
         
-        if not success:
-            return jsonify({'error': result}), 500
-        
-        # Convertir a formato que Node.js pueda interpretar como Buffer
-        response_data = {
+        # Verificación tipo Buffer (equivalente a Buffer.isBuffer() en Node)
+        is_buffer_valid = isinstance(pdf_bytes, (bytes, bytearray))
+        print(f"\n--- DEBUG ---\n"
+              f"¿Buffer válido?: {'✅ Sí' if is_buffer_valid else '❌ No'}\n"
+              f"Tipo recibido: {type(pdf_bytes)}\n"
+              f"Primeros bytes: {list(pdf_bytes[:4]) if is_buffer_valid else 'N/A'}\n"
+              f"Tamaño: {len(pdf_bytes) if is_buffer_valid else 0} bytes\n"
+              f"-------------\n")
+
+        if not success or not is_buffer_valid:
+            error_msg = 'Buffer inválido' if not is_buffer_valid else pdf_bytes
+            return jsonify({'error': error_msg}), 500
+
+        # 4. Enviar respuesta compatible con Node.js
+        return jsonify({
             'success': True,
-            'buffer': {
-                'type': 'Buffer',
-                'data': list(result)  # Lista de bytes (enteros 0-255)
-            },
-            'size_bytes': len(result)
-        }
-        
-        return jsonify(response_data)
-        
+            'buffer': list(pdf_bytes),  # Conversión a lista de bytes
+            'size_bytes': len(pdf_bytes)
+        })
+
     except Exception as e:
-        return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
+        return jsonify({'error': f'Error en el servidor: {str(e)}'}), 500
+
     finally:
+        # Limpiar archivo temporal
         if os.path.exists(upload_path):
             os.remove(upload_path)
 
