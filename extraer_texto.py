@@ -114,11 +114,19 @@ def upload_file():
         
         if not success:
             return jsonify({'error': result}), 500
-        
-        # Cambio clave aquí (eliminamos la representación string del buffer)
+
+        # Verificación del PDF generado (DEBUG)
+        with open('debug_ocr.pdf', 'wb') as f:
+            f.write(result)
+        print("PDF generado guardado para verificación: debug_ocr.pdf")
+
+        # Devuelve el buffer en formato compatible con Node.js
         return jsonify({
             'success': True,
-            'buffer': result.hex(),  # Enviamos el buffer como hexadecimal puro
+            'buffer': {
+                'type': 'Buffer',
+                'data': list(result)  # Formato que Buffer.from() entiende nativamente
+            },
             'size_bytes': len(result)
         })
         
