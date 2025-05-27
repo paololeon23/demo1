@@ -113,10 +113,13 @@ def upload_file():
         if not success:
             return jsonify({'error': result}), 500
 
-        # Respuesta con el buffer binario en formato que Node.js espera
+        # Enviar el buffer como base64 en lugar de hexadecimal
+        import base64
+        buffer_base64 = base64.b64encode(result).decode('utf-8')
+        
         return jsonify({
             'success': True,
-            'buffer': result.hex(),  # Convertir a representación hexadecimal
+            'buffer': buffer_base64,  # Buffer en base64
             'size_bytes': len(result),
             'original_filename': secure_filename(file.filename)
         })
@@ -126,6 +129,6 @@ def upload_file():
     finally:
         if os.path.exists(upload_path):
             os.remove(upload_path)
-
+            
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
