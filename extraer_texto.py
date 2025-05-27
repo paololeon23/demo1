@@ -6,7 +6,6 @@ from flask import Flask, request, send_file, jsonify
 import os
 import uuid
 from werkzeug.utils import secure_filename
-import base64
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -91,6 +90,9 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
+
+    print('---------------- archivo ------------')
+    print(request.files)  # Esto imprimirá todo lo que se recibe en request.files
     # Verificar si se envió un archivo
     if 'prueba' not in request.files:
         return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
@@ -111,36 +113,30 @@ def upload_file():
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
     
     try:
-        # Guardar archivo temporalmente
         file.save(upload_path)
-        
-        # Procesar PDF con OCR
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
         
         if not success:
             return jsonify({'error': result}), 500
         
-        # Codificar el buffer a base64
-        pdf_base64 = base64.b64encode(result).decode('utf-8')
+        # Convertir a formato Buffer simplificado
+        hex_start = ' '.join(f"{byte:02x}" for byte in result[:20])  # Primeros 20 bytes
+        total_bytes = len(result)
+        buffer_repr = f"<Buffer {hex_start} ... {total_bytes - 20} more bytes>"
         
-        # Verificar que el buffer no esté vacío
-        if len(result) == 0:
-            return jsonify({'error': 'El PDF resultante está vacío'}), 500
-            
-        # Verificar que sea un PDF válido (opcional)
-        if not result.startswith(b'%PDF'):
-            return jsonify({'error': 'El archivo resultante no es un PDF válido'}), 500
-
+        # Crear un objeto BytesIO para enviar el PDF
+        pdf_io = io.BytesIO(result)
+        pdf_io.seek(0)
+        
         return jsonify({
             'success': True,
-            'buffer': pdf_base64,
-            'size_bytes': len(result),
+            'buffer': buffer_repr,
+            'size_bytes': total_bytes,
         })
         
     except Exception as e:
         return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
     finally:
-        # Limpieza: eliminar archivo temporal si existe
         if os.path.exists(upload_path):
             os.remove(upload_path)
 
