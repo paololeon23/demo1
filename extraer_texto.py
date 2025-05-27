@@ -2,7 +2,7 @@ import fitz  # PyMuPDF
 import pytesseract
 from PIL import Image
 import io
-from flask import Flask, request, send_file, jsonify,make_response  
+from flask import Flask, request, send_file, jsonify
 import os
 import uuid
 from werkzeug.utils import secure_filename
@@ -90,6 +90,7 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
+    # Verificación básica del archivo
     if 'prueba' not in request.files:
         return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
     
@@ -101,6 +102,7 @@ def upload_file():
     if not allowed_file(file.filename):
         return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
 
+    # Procesamiento del archivo
     unique_id = str(uuid.uuid4())
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{secure_filename(file.filename)}")
     
@@ -111,11 +113,12 @@ def upload_file():
         if not success:
             return jsonify({'error': result}), 500
 
-        # Respuesta con el PDF binario
-        response = make_response(result)
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename=ocr_{secure_filename(file.filename)}'
-        return response
+        # Convertir los bytes a hexadecimal (que Node.js puede convertir a Buffer)
+        hex_buffer = result.hex()
+        
+        return jsonify({
+            'buffer': hex_buffer  # Solo el buffer en hexadecimal
+        })
         
     except Exception as e:
         return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
