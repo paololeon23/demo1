@@ -90,49 +90,54 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
-    print('---------------- archivo ------------')
-    print(request.files)
-    
+    # Verificación básica del archivo
     if 'prueba' not in request.files:
-        return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
-    
+        return jsonify({'error': 'No se encontró el campo de archivo'}), 400
+        
     file = request.files['prueba']
-    
     if file.filename == '':
         return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
-    
+
+    # Validación de tipo de archivo
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
+        return jsonify({'error': 'Solo se permiten archivos PDF'}), 400
 
     unique_id = str(uuid.uuid4())
     original_filename = secure_filename(file.filename)
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
-    
+
     try:
+        # 1. Guardar archivo temporalmente (requerido por fitz/PyMuPDF)
         file.save(upload_path)
+        
+        # 2. Procesar OCR con la ruta del archivo
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
         
         if not success:
             return jsonify({'error': result}), 500
 
-        # Verificación del PDF generado (DEBUG)
-        with open('debug_ocr.pdf', 'wb') as f:
-            f.write(result)
-        print("PDF generado guardado para verificación: debug_ocr.pdf")
+        # 3. Verificación del resultado
+        if not result or len(result) == 0:
+            return jsonify({'error': 'El PDF generado está vacío'}), 500
+            
+        print(f"PDF generado - Tamaño: {len(result)} bytes")
+        print(f"Encabezado PDF: {result[:4].decode('latin-1', errors='replace')}")  # Debe mostrar "%PDF"
 
-        # Devuelve el buffer en formato compatible con Node.js
+        # 4. Devolver respuesta
         return jsonify({
             'success': True,
             'buffer': {
                 'type': 'Buffer',
-                'data': list(result)  # Formato que Buffer.from() entiende nativamente
+                'data': list(result)
             },
             'size_bytes': len(result)
         })
         
     except Exception as e:
-        return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
+        print(f"Error en el procesamiento: {str(e)}")
+        return jsonify({'error': f'Error interno al procesar el PDF: {str(e)}'}), 500
     finally:
+        # Limpieza del archivo temporal
         if os.path.exists(upload_path):
             os.remove(upload_path)
 
