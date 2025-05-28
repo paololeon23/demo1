@@ -90,47 +90,46 @@ def home():
 
 @app.route('/convert-to-ocr', methods=['POST'])
 def upload_file():
-    print('---------------- archivo ------------')
-    print(request.files)
-    
     if 'prueba' not in request.files:
         return jsonify({'error': 'No se encontró el archivo en la solicitud'}), 400
-    
+
     file = request.files['prueba']
-    
     if file.filename == '':
         return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
-    
+
     if not allowed_file(file.filename):
         return jsonify({'error': 'Tipo de archivo no permitido. Solo se aceptan PDFs'}), 400
-    
+
     unique_id = str(uuid.uuid4())
     original_filename = secure_filename(file.filename)
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{original_filename}")
-    
+
     try:
         file.save(upload_path)
         success, result = convertir_pdf_escaneado_a_ocr(upload_path)
-        
+
         if not success:
             return jsonify({'error': result}), 500
-        
-        # Representación COMPLETA del Buffer (hexadecimal)
-        hex_buffer = result.hex()
-        buffer_repr = f"<Buffer {hex_buffer[:40]}...>"  # Primeros 20 bytes para visualización
+
+        # Aquí generamos la representación en formato Node.js <Buffer ...>
+        buffer_repr = "<Buffer " + result.hex() + ">"
         total_bytes = len(result)
-        
+
+        # En lugar de guardar en archivo, enviamos en la respuesta JSON
         return jsonify({
             'success': True,
-            'buffer': hex_buffer,  # Todos los bytes del PDF en hexadecimal
+            'buffer': buffer_repr,
             'size_bytes': total_bytes,
         })
-        
+
     except Exception as e:
         return jsonify({'error': f"Error en el servidor: {str(e)}"}), 500
+
     finally:
         if os.path.exists(upload_path):
             os.remove(upload_path)
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
